@@ -196,6 +196,21 @@ def graph_to_vis_json(
         )
 
     community_ids = sorted({n["community_id"] for n in nodes})
+    community_meta: dict[str, dict] = {}
+    for node in nodes:
+        cid = str(node["community_id"])
+        if cid not in community_meta:
+            if cid.startswith("narrative_"):
+                label = f"Narrativa {cid.replace('narrative_', '')}"
+            else:
+                label = f"Comunidad {cid}"
+            community_meta[cid] = {
+                "id": cid,
+                "color": node["color"],
+                "label": label,
+                "node_count": 0,
+            }
+        community_meta[cid]["node_count"] += 1
 
     return {
         "title": title or source_path.stem,
@@ -208,6 +223,8 @@ def graph_to_vis_json(
             "min_degree": default_min_degree,
             "min_edge_weight": 1,
             "show_labels": True,
+            "layout": "forceAtlas2Based",
+            "size_metric": "degree",
             "node_types": ["hashtag"],
         },
         "filters": {
@@ -220,6 +237,10 @@ def graph_to_vis_json(
             ),
         },
         "community_count": len(community_ids),
+        "communities": sorted(
+            community_meta.values(),
+            key=lambda item: (-item["node_count"], item["label"]),
+        ),
         "nodes": nodes,
         "edges": edges,
     }

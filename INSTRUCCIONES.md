@@ -823,7 +823,7 @@ Publicación:
 2. En GitHub: **Settings → Pages → Build and deployment → GitHub Actions**.
 3. El workflow `.github/workflows/pages.yml` despliega automáticamente.
 
-El visor usa [vis-network](https://visjs.org/). Incluye el grafo completo de hashtags; filtra en el navegador por **grado mínimo** (por defecto: manosfera ≥ 33, violencia ≥ 30) y peso de arista. Los colores representan comunidades detectadas en el GraphML (Louvain).
+El visor usa [vis-network](https://visjs.org/). Incluye el grafo completo de hashtags; filtra en el navegador por **grado mínimo** (por defecto: manosfera ≥ 33, violencia ≥ 30) y peso de arista. Los colores representan comunidades detectadas en el GraphML (Louvain). Puedes elegir el **tamaño de nodos** (grado, nº posts o uniforme) y **exportar PNG** desde el visor.
 
 ### Gephi (análisis avanzado)
 

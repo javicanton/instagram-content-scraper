@@ -15,22 +15,52 @@
     <div class="viewer-controls">
       <label class="control-block">
         Grado mínimo (≥)
-        <input type="range" id="degree-slider" min="0" max="100" value="0" />
-        <span id="degree-value">0</span>
+        <div class="control-row">
+          <input type="range" id="degree-slider" min="0" max="100" value="0" />
+          <input type="number" id="degree-input" class="num-input" min="0" max="100" value="0" />
+        </div>
       </label>
       <label class="control-block">
         Peso arista mín.
-        <input type="range" id="weight-slider" min="1" max="10" value="1" />
-        <span id="weight-value">1</span>
+        <div class="control-row">
+          <input type="range" id="weight-slider" min="1" max="10" value="1" />
+          <input type="number" id="weight-input" class="num-input" min="1" max="10" value="1" />
+        </div>
+      </label>
+      <label class="control-block">
+        Tamaño de nodos
+        <select id="size-select">
+          <option value="degree">Grado</option>
+          <option value="post_count">Nº posts</option>
+          <option value="uniform">Uniforme</option>
+        </select>
+      </label>
+      <label class="control-block">
+        Layout
+        <select id="layout-select">
+          <option value="forceAtlas2Based">Force Atlas 2</option>
+          <option value="barnesHut">Barnes-Hut</option>
+          <option value="repulsion">Repulsión</option>
+          <option value="hierarchicalRepulsion">Jerárquico</option>
+        </select>
       </label>
       <label class="control-inline"><input type="checkbox" id="labels-toggle" checked /> Etiquetas</label>
       <label class="control-inline"><input type="checkbox" id="physics-toggle" checked /> Física</label>
+      <button type="button" id="export-png-btn" class="secondary">Exportar PNG</button>
+      <button type="button" id="relayout-btn">Re-layout</button>
       <button type="button" id="fit-btn">Centrar</button>
       <button type="button" id="reset-btn">Restablecer</button>
     </div>
     <p id="filter-hint" class="filter-hint"></p>
   </header>
-  <div id="network"></div>
+  <div class="viewer-body">
+    <div id="network"></div>
+    <aside id="cluster-legend" class="cluster-legend" aria-label="Leyenda de comunidades">
+      <h2>Comunidades</h2>
+      <p id="legend-hint" class="legend-hint">Visible tras filtrar</p>
+      <ul id="legend-list"></ul>
+    </aside>
+  </div>
   <script src="assets/viewer.js"></script>
 </body>
 </html>

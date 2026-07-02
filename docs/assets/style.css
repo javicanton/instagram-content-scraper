@@ -86,12 +86,20 @@ main {
 .viewer-header { flex: 0 0 auto; }
 .viewer-header h1 { font-size: 1.25rem; }
 .back { text-decoration: none; font-size: 0.9rem; }
+
+.viewer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  position: relative;
+}
+
 .viewer-controls {
   margin-top: 0.75rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem 1.25rem;
-  align-items: center;
+  align-items: flex-end;
 }
 
 .control-block {
@@ -100,11 +108,37 @@ main {
   gap: 0.2rem;
   font-size: 0.85rem;
   color: var(--muted);
-  min-width: 160px;
+  min-width: 180px;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .control-block input[type="range"] {
-  width: 160px;
+  flex: 1;
+  min-width: 100px;
+}
+
+.num-input {
+  width: 4.5rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.control-block select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
 }
 
 .control-inline {
@@ -112,6 +146,7 @@ main {
   align-items: center;
   gap: 0.35rem;
   font-size: 0.9rem;
+  padding-bottom: 0.2rem;
 }
 
 .filter-hint {
@@ -119,6 +154,7 @@ main {
   font-size: 0.85rem;
   color: var(--muted);
 }
+
 .viewer-controls button {
   background: var(--accent);
   color: white;
@@ -126,10 +162,85 @@ main {
   padding: 0.4rem 0.9rem;
   border-radius: 6px;
   cursor: pointer;
+  margin-bottom: 0.2rem;
+}
+
+.viewer-controls button.secondary {
+  background: #3a3a4a;
+}
+
+.viewer-controls button.secondary:hover {
+  background: #4a4a5c;
 }
 
 #network {
   flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   background: #121218;
+}
+
+.cluster-legend {
+  width: 240px;
+  flex: 0 0 240px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.75rem 1rem;
+  overflow-y: auto;
+  font-size: 0.85rem;
+}
+
+.cluster-legend h2 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.legend-hint {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+#legend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#legend-list li {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legend-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .viewer-body { flex-direction: column; }
+  .cluster-legend {
+    width: 100%;
+    flex: 0 0 auto;
+    max-height: 140px;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
 }

@@ -153,8 +153,19 @@
     return 8 + norm * 28;
   }
 
-  function labelFont(showLabels) {
-    return { ...NODE_FONT, size: showLabels ? 14 : 0 };
+  const NODE_SIZE_MIN = 8;
+  const NODE_SIZE_MAX = 36;
+  const LABEL_SIZE_MIN = 9;
+  const LABEL_SIZE_MAX = 18;
+
+  function labelFontSize(nodeSize) {
+    const size = Number(nodeSize) || NODE_SIZE_MIN;
+    const norm = (size - NODE_SIZE_MIN) / (NODE_SIZE_MAX - NODE_SIZE_MIN || 1);
+    return Math.round(LABEL_SIZE_MIN + clamp(norm, 0, 1) * (LABEL_SIZE_MAX - LABEL_SIZE_MIN));
+  }
+
+  function labelFont(showLabels, nodeSize) {
+    return { ...NODE_FONT, size: showLabels ? labelFontSize(nodeSize) : 0 };
   }
 
   function savePositions() {
@@ -198,6 +209,7 @@
 
     const visNodes = visibleIds.map((id) => {
       const n = nodeById.get(id);
+      const nodeSize = computeNodeSize(n, sizeMetric, scale);
       const node = applyCachedPosition(
         {
           id: n.id,
@@ -208,9 +220,9 @@
             border: n.color,
             highlight: { background: n.color, border: "#ffffff" },
           },
-          size: computeNodeSize(n, sizeMetric, scale),
+          size: nodeSize,
           title: tooltip(n.label, n.post_count),
-          font: labelFont(showLabels),
+          font: labelFont(showLabels, nodeSize),
           fixed: false,
         },
         n.id
@@ -296,12 +308,10 @@
         shape: "dot",
         borderWidth: 1,
         borderWidthSelected: 2,
-        font: { ...NODE_FONT, size: 14 },
+        font: { ...NODE_FONT, size: LABEL_SIZE_MIN },
         scaling: {
           label: {
-            enabled: true,
-            min: 10,
-            max: 18,
+            enabled: false,
             drawThreshold: 0,
             maxVisible: 10000,
           },
@@ -414,6 +424,7 @@
 
   function updateSizesOnly() {
     const metric = sizeSelect.value;
+    const showLabels = labelsToggle.checked;
     const visibleRaw = nodesDs
       .get()
       .map((n) => rawData.nodes.find((x) => x.id === n.id))
@@ -421,7 +432,11 @@
     const scale = sizeScale(visibleRaw, metric);
     patchVisibleNodes((n) => {
       const raw = rawData.nodes.find((x) => x.id === n.id);
-      return { size: computeNodeSize(raw, metric, scale) };
+      const nodeSize = computeNodeSize(raw, metric, scale);
+      return {
+        size: nodeSize,
+        font: labelFont(showLabels, nodeSize),
+      };
     });
   }
 
@@ -431,7 +446,7 @@
       label: showLabels
         ? rawData.nodes.find((x) => x.id === n.id)?.label || ""
         : "",
-      font: labelFont(showLabels),
+      font: labelFont(showLabels, n.size),
     }));
   }
 

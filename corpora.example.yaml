@@ -1,0 +1,13 @@
+# Configuración de varios corpus para `orchestrator.py --mode multi`.
+# Copia a corpora.yaml y edita las rutas de hashtags.
+#
+# Cada corpus se guarda en: data/output/<id>/
+# El análisis recomendado usa: data/analysis/<id>/
+
+corpora:
+  - id: manosfera
+    hashtags_file: examples/hashtags_manosfera.csv
+    description: Ejemplo — contexto ideológico (caso de estudio académico)
+  - id: violencia
+    hashtags_file: examples/hashtags_violencia.csv
+    description: Ejemplo — violencia sexual digital (caso de estudio académico)

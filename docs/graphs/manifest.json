@@ -1,0 +1,40 @@
+{
+  "graphs": [
+    {
+      "id": "hashtags_manosfera",
+      "file": "graphs/hashtags_manosfera.json",
+      "title": "manosfera — hashtags",
+      "corpus_id": "manosfera",
+      "graph_type": "hashtags",
+      "node_count": 200,
+      "edge_count": 2718
+    },
+    {
+      "id": "hashtags_violencia",
+      "file": "graphs/hashtags_violencia.json",
+      "title": "violencia — hashtags",
+      "corpus_id": "violencia",
+      "graph_type": "hashtags",
+      "node_count": 200,
+      "edge_count": 2951
+    },
+    {
+      "id": "users_manosfera",
+      "file": "graphs/users_manosfera.json",
+      "title": "manosfera — users",
+      "corpus_id": "manosfera",
+      "graph_type": "users",
+      "node_count": 200,
+      "edge_count": 306
+    },
+    {
+      "id": "users_violencia",
+      "file": "graphs/users_violencia.json",
+      "title": "violencia — users",
+      "corpus_id": "violencia",
+      "graph_type": "users",
+      "node_count": 200,
+      "edge_count": 216
+    }
+  ]
+}

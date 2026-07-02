@@ -1,0 +1,103 @@
+:root {
+  --bg: #0f0f12;
+  --surface: #1a1a22;
+  --text: #f2f2f7;
+  --muted: #9b9bab;
+  --accent: #e1306c;
+  --border: #2c2c38;
+  --hashtag: #e1306c;
+  --user: #405de6;
+  --profile: #833ab4;
+  --narrative: #fd5949;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+a { color: #7eb8ff; }
+
+.site-header, .viewer-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.site-header h1, .viewer-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+}
+
+.meta, .note, #graph-stats { color: var(--muted); font-size: 0.95rem; }
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.graph-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.graph-card {
+  display: block;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.graph-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.graph-card h3 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+.graph-meta, .graph-stats { margin: 0.25rem 0; color: var(--muted); font-size: 0.9rem; }
+
+.legend ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 1rem; }
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+.swatch.hashtag { background: var(--hashtag); }
+.swatch.user { background: var(--user); }
+.swatch.profile { background: var(--profile); }
+.swatch.narrative { background: var(--narrative); }
+
+.viewer-page { height: 100vh; display: flex; flex-direction: column; }
+.viewer-header { flex: 0 0 auto; }
+.viewer-header h1 { font-size: 1.25rem; }
+.back { text-decoration: none; font-size: 0.9rem; }
+.viewer-controls { margin-top: 0.75rem; display: flex; gap: 1rem; align-items: center; }
+.viewer-controls button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#network {
+  flex: 1 1 auto;
+  min-height: 0;
+  background: #121218;
+}

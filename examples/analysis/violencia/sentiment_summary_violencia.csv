@@ -1,0 +1,2 @@
+group,n_comments,positive,negative,neutral,positive_pct,negative_pct,neutral_pct,mean_polarity,polarization_index
+all,461,141,110,210,30.6,23.9,45.6,0.056,0.544

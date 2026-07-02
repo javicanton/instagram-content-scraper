@@ -1,0 +1,10 @@
+# Lista de hashtags para scrapear (un hashtag por línea, sin #).
+# Copia este archivo a hashtags.csv y edita con tus etiquetas.
+#
+# También puedes usar CSV con cabecera:
+# hashtag
+# mi_tema
+# otro_tema
+
+ejemplo_hashtag_1
+ejemplo_hashtag_2

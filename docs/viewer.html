@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Visor de grafo</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+</head>
+<body class="viewer-page">
+  <header class="viewer-header">
+    <a href="index.html" class="back">← Índice</a>
+    <h1 id="graph-title">Grafo</h1>
+    <p id="graph-stats"></p>
+    <div class="viewer-controls">
+      <label>Física <input type="checkbox" id="physics-toggle" checked /></label>
+      <button type="button" id="fit-btn">Centrar</button>
+    </div>
+  </header>
+  <div id="network"></div>
+  <script src="assets/viewer.js"></script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "notes": "Edita este archivo tras revisar clusters_summary.csv. Cada categoría necesita id único y terms (frases/palabras).",
+  "categories": [
+    {
+      "id": "legitimacion_trivializacion",
+      "label": "Trivialización",
+      "description": "Minimiza o ridiculiza la gravedad del acoso o la violencia digital.",
+      "priority": 1,
+      "terms": [
+        "es una broma",
+        "exagerado",
+        "no es para tanto",
+        "drama"
+      ]
+    },
+    {
+      "id": "legitimacion_culpabilizacion",
+      "label": "Culpabilización de la víctima",
+      "description": "Atribuye responsabilidad a quien recibe la agresión.",
+      "priority": 2,
+      "terms": [
+        "se lo buscó",
+        "para qué sube fotos",
+        "la culpa es suya"
+      ]
+    },
+    {
+      "id": "legitimacion_victimismo_masculino",
+      "label": "Victimismo masculino",
+      "description": "Desplaza el foco hacia supuesta discriminación contra hombres.",
+      "priority": 3,
+      "terms": [
+        "también sufren",
+        "ellos también",
+        "solo por ser hombre"
+      ]
+    },
+    {
+      "id": "legitimacion_negacion_violencia",
+      "label": "Negación de la violencia",
+      "description": "Niega que el fenómeno constituya violencia.",
+      "priority": 4,
+      "terms": [
+        "no es violencia",
+        "es solo una imagen",
+        "no es un delito"
+      ]
+    },
+    {
+      "id": "antifeminist",
+      "label": "Antifeminismo general",
+      "description": "Posiciones explícitas contra el feminismo o a favor de marcos misóginos.",
+      "priority": 10,
+      "terms": [
+        "feminazi",
+        "ideología de género",
+        "manosfera"
+      ]
+    },
+    {
+      "id": "feminist",
+      "label": "Posición feminista",
+      "description": "Crítica al patriarcado, defensa de derechos o denuncia de violencia machista.",
+      "priority": 11,
+      "terms": [
+        "patriarcado",
+        "violencia machista",
+        "consentimiento"
+      ]
+    },
+    {
+      "id": "neutral",
+      "label": "Neutro / no clasificado",
+      "description": "Sin señales léxicas claras; usar para residuo.",
+      "priority": 99,
+      "terms": []
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+# Entorno y secretos
+.env
+instagram_cookie.txt
+hashtags.csv
+corpora.yaml
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Node
+node_modules/
+
+# Datos brutos y scrape de Instagram (no publicar)
+data/raw/*
+!data/raw/.gitkeep
+data/output/*
+!data/output/.gitkeep
+
+# Análisis en curso del usuario (usa examples/ para salidas de referencia)
+data/analysis/*
+!data/analysis/.gitkeep
+
+# Comentarios con texto y usernames (datos personales) — ni siquiera en examples
+**/comments_enriched*.csv
+**/comments_clustered*.csv
+**/comments_for_analysis*.csv
+**/language_excluded*.csv
+data/seeds/seeds.csv
+
+# macOS
+.DS_Store
+
+# Historial instatouch (si se usa historypath local)
+.history/

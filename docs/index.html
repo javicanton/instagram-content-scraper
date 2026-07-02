@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>instagram-content-scraper — Grafos interactivos</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1>instagram-content-scraper</h1>
+    <p>Grafos de ejemplo generados con el pipeline de análisis (hashtags, usuarios, red completa).</p>
+    <p class="meta">
+      <a href="https://github.com/javicanton/instagram-content-scraper">Repositorio</a>
+      · Herramienta open source para investigación por hashtags en Instagram
+    </p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Grafos disponibles</h2>
+      <p id="status">Cargando manifest…</p>
+      <div id="graph-list" class="graph-grid"></div>
+    </section>
+
+    <section class="legend">
+      <h3>Leyenda de nodos</h3>
+      <ul>
+        <li><span class="swatch hashtag"></span> Hashtag</li>
+        <li><span class="swatch user"></span> Usuario / comentarista</li>
+        <li><span class="swatch profile"></span> Perfil de post</li>
+        <li><span class="swatch narrative"></span> Cluster narrativo</li>
+      </ul>
+      <p class="note">
+        Los grafos web muestran hasta 200 nodos con mayor conectividad para rendimiento en el navegador.
+        Exporta el <code>.graphml</code> completo con <code>analyze.py</code> y ábrelo en Gephi para el grafo íntegro.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    async function loadManifest() {
+      const status = document.getElementById("status");
+      const list = document.getElementById("graph-list");
+      try {
+        const res = await fetch("graphs/manifest.json");
+        if (!res.ok) throw new Error(res.statusText);
+        const data = await res.json();
+        status.textContent = `${data.graphs.length} grafos de ejemplo`;
+        list.innerHTML = data.graphs.map((g) => `
+          <a class="graph-card" href="viewer.html?graph=${encodeURIComponent(g.file)}">
+            <h3>${g.title}</h3>
+            <p class="graph-meta">${g.graph_type || "grafo"} · corpus <strong>${g.corpus_id || "—"}</strong></p>
+            <p class="graph-stats">${g.node_count} nodos · ${g.edge_count} aristas</p>
+          </a>
+        `).join("");
+      } catch (err) {
+        status.textContent = "No se pudo cargar graphs/manifest.json. Ejecuta: python publish_graphs.py";
+        console.error(err);
+      }
+    }
+    loadManifest();
+  </script>
+</body>
+</html>

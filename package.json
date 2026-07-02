@@ -1,0 +1,14 @@
+{
+  "name": "instagram-content-scraper",
+  "version": "1.0.0",
+  "description": "CLI para scrapear Instagram (instatouch) y exportar CSV tabulares",
+  "private": true,
+  "scripts": {
+    "instatouch": "instatouch"
+  },
+  "keywords": ["instagram", "scraper", "csv", "instatouch"],
+  "license": "MIT",
+  "dependencies": {
+    "instatouch": "^2.3.22"
+  }
+}

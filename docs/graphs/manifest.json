@@ -3,38 +3,38 @@
     {
       "id": "hashtags_manosfera",
       "file": "graphs/hashtags_manosfera.json",
-      "title": "manosfera — hashtags",
+      "title": "Hashtags — manosfera",
       "corpus_id": "manosfera",
       "graph_type": "hashtags",
-      "node_count": 200,
-      "edge_count": 2718
+      "node_count": 5299,
+      "edge_count": 51936,
+      "defaults": {
+        "min_degree": 33,
+        "min_edge_weight": 1,
+        "show_labels": true,
+        "node_types": [
+          "hashtag"
+        ]
+      },
+      "community_count": 40
     },
     {
       "id": "hashtags_violencia",
       "file": "graphs/hashtags_violencia.json",
-      "title": "violencia — hashtags",
+      "title": "Hashtags — violencia",
       "corpus_id": "violencia",
       "graph_type": "hashtags",
-      "node_count": 200,
-      "edge_count": 2951
-    },
-    {
-      "id": "users_manosfera",
-      "file": "graphs/users_manosfera.json",
-      "title": "manosfera — users",
-      "corpus_id": "manosfera",
-      "graph_type": "users",
-      "node_count": 200,
-      "edge_count": 306
-    },
-    {
-      "id": "users_violencia",
-      "file": "graphs/users_violencia.json",
-      "title": "violencia — users",
-      "corpus_id": "violencia",
-      "graph_type": "users",
-      "node_count": 200,
-      "edge_count": 216
+      "node_count": 2947,
+      "edge_count": 25526,
+      "defaults": {
+        "min_degree": 30,
+        "min_edge_weight": 1,
+        "show_labels": true,
+        "node_types": [
+          "hashtag"
+        ]
+      },
+      "community_count": 30
     }
   ]
 }

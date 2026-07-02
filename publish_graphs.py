@@ -22,12 +22,6 @@ def parse_args() -> argparse.Namespace:
         default=str(DEFAULT_ANALYSIS),
         help="Directorio con subcarpetas por corpus (default: examples/analysis).",
     )
-    parser.add_argument(
-        "--max-nodes",
-        type=int,
-        default=200,
-        help="Máximo de nodos por grafo en el visor web.",
-    )
     return parser.parse_args()
 
 
@@ -42,18 +36,27 @@ def main() -> int:
     for corpus_dir in sorted(analysis_root.iterdir()):
         if not corpus_dir.is_dir():
             continue
-        files = export_all_from_analysis(
-            corpus_dir, DOCS_GRAPHS, max_nodes=args.max_nodes
-        )
+        files = export_all_from_analysis(corpus_dir, DOCS_GRAPHS)
         written.extend(files)
         print(f"  {corpus_dir.name}: {len(files)} grafos")
 
     if not written:
         print(
-            f"AVISO: no se encontraron graph_*.graphml en {analysis_root}/",
+            f"AVISO: no se encontraron graph_hashtags_*.graphml en {analysis_root}/",
             file=sys.stderr,
         )
         return 1
+
+    # Eliminar JSON legacy (users, nombres antiguos)
+    for stale in DOCS_GRAPHS.glob("users_*.json"):
+        stale.unlink()
+    for stale in DOCS_GRAPHS.glob("hashtags_manosfera.json"):
+        if not any(p.name == "hashtags_manosfera.json" for p in written):
+            stale.unlink()
+    for stale in DOCS_GRAPHS.glob("manosfera.json"):
+        stale.unlink()
+    for stale in DOCS_GRAPHS.glob("violencia.json"):
+        stale.unlink()
 
     manifest = write_manifest(DOCS_DIR, written)
     print(f"Manifest: {manifest}")

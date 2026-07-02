@@ -10,23 +10,44 @@ from pathlib import Path
 
 import networkx as nx
 
-NODE_COLORS = {
-    "hashtag": "#e1306c",
-    "user": "#405de6",
-    "profile": "#833ab4",
-    "narrative": "#fd5949",
-    "default": "#999999",
+# Grado mínimo por corpus (equivalente a Gephi: grado ≥ umbral)
+CORPUS_DEFAULT_MIN_DEGREE: dict[str, int] = {
+    "manosfera": 33,
+    "violencia": 30,
 }
+
+CLUSTER_PALETTE = [
+    "#e1306c",
+    "#405de6",
+    "#833ab4",
+    "#fd5949",
+    "#f77737",
+    "#fcaf45",
+    "#00b894",
+    "#0984e3",
+    "#6c5ce7",
+    "#e17055",
+    "#00cec9",
+    "#d63031",
+    "#2d3436",
+    "#a29bfe",
+    "#55efc4",
+    "#ffeaa7",
+    "#81ecec",
+    "#fab1a0",
+    "#74b9ff",
+    "#636e72",
+]
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Convierte graph_*.graphml a JSON para el visor web en docs/."
+        description="Convierte graph_hashtags_*.graphml a JSON para el visor web en docs/."
     )
     parser.add_argument(
         "--input",
         required=True,
-        help="Ruta al archivo .graphml (p. ej. data/analysis/violencia/graph_hashtags_violencia.graphml).",
+        help="Ruta al archivo .graphml.",
     )
     parser.add_argument(
         "--output",
@@ -34,16 +55,10 @@ def parse_args() -> argparse.Namespace:
         help="JSON de salida (default: docs/graphs/<stem>.json).",
     )
     parser.add_argument(
-        "--max-nodes",
+        "--min-degree",
         type=int,
-        default=200,
-        help="Máximo de nodos (por grado). 0 = sin límite.",
-    )
-    parser.add_argument(
-        "--min-edge-weight",
-        type=float,
-        default=1.0,
-        help="Peso mínimo de arista tras filtrar nodos.",
+        default=None,
+        help="Grado mínimo por defecto en el visor (≥). Auto por corpus si se omite.",
     )
     parser.add_argument(
         "--title",
@@ -55,11 +70,6 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="ID del corpus (metadato en el JSON).",
     )
-    parser.add_argument(
-        "--graph-type",
-        default="",
-        help="Tipo de grafo: hashtags, users, full (metadato).",
-    )
     return parser.parse_args()
 
 
@@ -68,54 +78,65 @@ def _node_label(node_id: str, attrs: dict) -> str:
     if label:
         return label
     if ":" in node_id:
-        return node_id.split(":", 1)[1]
+        return f"#{node_id.split(':', 1)[1]}"
     return node_id
 
 
-def _node_group(attrs: dict) -> str:
-    return str(attrs.get("node_type", "") or "default").strip() or "default"
+def _post_count(attrs: dict) -> int:
+    raw = attrs.get("post_count", attrs.get("sourced_posts", 0))
+    try:
+        value = float(raw)
+        if value != value:  # NaN
+            return 0
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
 
 
-def _node_size(attrs: dict) -> float:
-    for key in ("post_count", "n_comments", "degree"):
-        raw = attrs.get(key, "")
-        try:
-            value = float(raw)
-            if value > 0:
-                return max(8.0, min(40.0, 6.0 + value ** 0.5))
-        except (TypeError, ValueError):
-            continue
-    return 12.0
+def _node_size(degree: int, post_count: int) -> float:
+    base = max(degree, post_count, 1)
+    return max(8.0, min(36.0, 6.0 + base ** 0.45))
 
 
-def filter_graph(
-    graph: nx.Graph,
-    *,
-    max_nodes: int,
-    min_edge_weight: float,
-) -> nx.Graph:
-    if max_nodes <= 0 or graph.number_of_nodes() <= max_nodes:
-        subgraph = graph.copy()
-    else:
-        ranked = sorted(
-            graph.degree(weight="weight"),
-            key=lambda item: item[1],
-            reverse=True,
-        )
-        keep = {node for node, _ in ranked[:max_nodes]}
-        subgraph = graph.subgraph(keep).copy()
+def _color_for_community(community_id: str | int) -> str:
+    try:
+        idx = int(community_id) % len(CLUSTER_PALETTE)
+    except (TypeError, ValueError):
+        idx = hash(str(community_id)) % len(CLUSTER_PALETTE)
+    return CLUSTER_PALETTE[idx]
 
-    if min_edge_weight > 1.0:
-        remove = [
-            (u, v)
-            for u, v, data in subgraph.edges(data=True)
-            if float(data.get("weight", 1)) < min_edge_weight
-        ]
-        subgraph.remove_edges_from(remove)
-        isolates = list(nx.isolates(subgraph))
-        subgraph.remove_nodes_from(isolates)
 
-    return subgraph
+def _color_for_narrative_cluster(cluster_id: str) -> str:
+    text = str(cluster_id or "").strip()
+    if not text or text.lower() == "nan":
+        return CLUSTER_PALETTE[-1]
+    try:
+        return CLUSTER_PALETTE[int(text) % len(CLUSTER_PALETTE)]
+    except ValueError:
+        return CLUSTER_PALETTE[hash(text) % len(CLUSTER_PALETTE)]
+
+
+def detect_communities(graph: nx.Graph) -> dict[str, str]:
+    if graph.number_of_nodes() == 0:
+        return {}
+    communities = nx.community.louvain_communities(graph, weight="weight", seed=0)
+    out: dict[str, str] = {}
+    for idx, comm in enumerate(communities):
+        for node in comm:
+            out[str(node)] = str(idx)
+    return out
+
+
+def enrich_narrative_colors(graph: nx.Graph, communities: dict[str, str]) -> dict[str, str]:
+    """Usa cluster_id del graphml en nodos narrative; Louvain para hashtags."""
+    out = dict(communities)
+    for node_id, attrs in graph.nodes(data=True):
+        node_type = str(attrs.get("node_type", "") or "")
+        if node_type == "narrative":
+            cid = str(attrs.get("cluster_id", "") or "").strip()
+            if cid and cid.lower() != "nan":
+                out[node_id] = f"narrative_{cid}"
+    return out
 
 
 def graph_to_vis_json(
@@ -123,22 +144,42 @@ def graph_to_vis_json(
     *,
     title: str,
     corpus_id: str,
-    graph_type: str,
     source_path: Path,
+    default_min_degree: int,
 ) -> dict:
+    communities = detect_communities(graph)
+    communities = enrich_narrative_colors(graph, communities)
+
+    degrees = dict(graph.degree())
+    max_degree = max(degrees.values()) if degrees else 0
+
     nodes = []
     for node_id, attrs in graph.nodes(data=True):
-        group = _node_group(attrs)
+        node_type = str(attrs.get("node_type", "hashtag") or "hashtag")
+        degree = int(degrees.get(node_id, 0))
+        post_count = _post_count(attrs)
+        label = _node_label(node_id, attrs)
+
+        if node_type == "narrative":
+            cluster_id = str(attrs.get("cluster_id", "") or "").strip()
+            community_id = f"narrative_{cluster_id}" if cluster_id else communities.get(node_id, "0")
+            color = _color_for_narrative_cluster(cluster_id or community_id)
+        else:
+            community_id = communities.get(node_id, "0")
+            color = _color_for_community(community_id)
+
         nodes.append(
             {
                 "id": node_id,
-                "label": _node_label(node_id, attrs),
-                "group": group,
-                "color": NODE_COLORS.get(group, NODE_COLORS["default"]),
-                "size": _node_size(attrs),
-                "title": "<br>".join(
-                    f"{k}: {v}" for k, v in sorted(attrs.items()) if str(v).strip()
-                ),
+                "label": label,
+                "node_type": node_type,
+                "group": node_type,
+                "degree": degree,
+                "post_count": post_count,
+                "community_id": community_id,
+                "cluster_id": str(attrs.get("cluster_id", "") or ""),
+                "color": color,
+                "size": _node_size(degree, post_count),
             }
         )
 
@@ -150,17 +191,35 @@ def graph_to_vis_json(
                 "from": source,
                 "to": target,
                 "value": max(1.0, weight),
-                "title": f"{attrs.get('edge_type', 'edge')}: {weight}",
+                "edge_type": str(attrs.get("edge_type", "edge")),
             }
         )
+
+    community_ids = sorted({n["community_id"] for n in nodes})
 
     return {
         "title": title or source_path.stem,
         "corpus_id": corpus_id,
-        "graph_type": graph_type,
+        "graph_type": "hashtags",
         "source": source_path.name,
         "node_count": len(nodes),
         "edge_count": len(edges),
+        "defaults": {
+            "min_degree": default_min_degree,
+            "min_edge_weight": 1,
+            "show_labels": True,
+            "node_types": ["hashtag"],
+        },
+        "filters": {
+            "degree_min": 0,
+            "degree_max": max_degree,
+            "edge_weight_min": 1,
+            "edge_weight_max": max(
+                (int(e["value"]) for e in edges),
+                default=1,
+            ),
+        },
+        "community_count": len(community_ids),
         "nodes": nodes,
         "edges": edges,
     }
@@ -168,32 +227,38 @@ def graph_to_vis_json(
 
 def default_output_path(input_path: Path, output_dir: Path) -> Path:
     stem = input_path.stem
-    if stem.startswith("graph_"):
+    if stem.startswith("graph_hashtags_"):
+        stem = stem[len("graph_hashtags_") :]
+    elif stem.startswith("graph_"):
         stem = stem[len("graph_") :]
-    return output_dir / f"{stem}.json"
+    return output_dir / f"hashtags_{stem}.json"
+
+
+def resolve_min_degree(corpus_id: str, explicit: int | None) -> int:
+    if explicit is not None:
+        return explicit
+    return CORPUS_DEFAULT_MIN_DEGREE.get(corpus_id, 1)
 
 
 def export_graph(
     input_path: Path,
     output_path: Path,
     *,
-    max_nodes: int,
-    min_edge_weight: float,
+    min_degree: int | None,
     title: str,
     corpus_id: str,
-    graph_type: str,
 ) -> Path:
     if not input_path.exists():
         raise FileNotFoundError(input_path)
 
     graph = nx.read_graphml(input_path)
-    filtered = filter_graph(graph, max_nodes=max_nodes, min_edge_weight=min_edge_weight)
+    default_min = resolve_min_degree(corpus_id, min_degree)
     payload = graph_to_vis_json(
-        filtered,
+        graph,
         title=title,
         corpus_id=corpus_id,
-        graph_type=graph_type,
         source_path=input_path,
+        default_min_degree=default_min,
     )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -205,35 +270,23 @@ def export_all_from_analysis(
     analysis_dir: Path,
     docs_graphs_dir: Path,
     *,
-    max_nodes: int = 200,
+    min_degree: int | None = None,
 ) -> list[Path]:
-    """Exporta graph_hashtags_*, graph_users_* y graph_* de un directorio de análisis."""
+    """Exporta solo graph_hashtags_<corpus>.graphml (sin grafos de usuarios)."""
     written: list[Path] = []
 
-    for graphml in sorted(analysis_dir.glob("graph*.graphml")):
-        stem = graphml.stem
-        if "_hashtags_" in stem:
-            graph_type = "hashtags"
-        elif "_users_" in stem:
-            graph_type = "users"
-        elif stem.startswith("graph_"):
-            graph_type = "full"
-        else:
-            graph_type = "graph"
-
-        corpus_id = stem.split("_")[-1]
+    for graphml in sorted(analysis_dir.glob("graph_hashtags_*.graphml")):
+        corpus_id = graphml.stem.split("_")[-1]
         out = default_output_path(graphml, docs_graphs_dir)
-        title = f"{corpus_id} — {graph_type}"
+        title = f"Hashtags — {corpus_id}"
 
         written.append(
             export_graph(
                 graphml,
                 out,
-                max_nodes=max_nodes,
-                min_edge_weight=1.0,
+                min_degree=min_degree if min_degree is not None else resolve_min_degree(corpus_id, None),
                 title=title,
                 corpus_id=corpus_id,
-                graph_type=graph_type,
             )
         )
     return written
@@ -249,9 +302,11 @@ def write_manifest(docs_dir: Path, graph_files: list[Path]) -> Path:
                 "file": f"graphs/{path.name}",
                 "title": data.get("title", path.stem),
                 "corpus_id": data.get("corpus_id", ""),
-                "graph_type": data.get("graph_type", ""),
+                "graph_type": data.get("graph_type", "hashtags"),
                 "node_count": data.get("node_count", 0),
                 "edge_count": data.get("edge_count", 0),
+                "defaults": data.get("defaults", {}),
+                "community_count": data.get("community_count", 0),
             }
         )
     manifest = {"graphs": graphs}
@@ -263,6 +318,7 @@ def write_manifest(docs_dir: Path, graph_files: list[Path]) -> Path:
 def main() -> int:
     args = parse_args()
     input_path = Path(args.input)
+    corpus_id = args.corpus_id or input_path.stem.split("_")[-1]
     output_path = (
         Path(args.output)
         if args.output
@@ -273,11 +329,9 @@ def main() -> int:
         out = export_graph(
             input_path,
             output_path,
-            max_nodes=args.max_nodes,
-            min_edge_weight=args.min_edge_weight,
+            min_degree=args.min_degree,
             title=args.title,
-            corpus_id=args.corpus_id,
-            graph_type=args.graph_type,
+            corpus_id=corpus_id,
         )
     except FileNotFoundError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

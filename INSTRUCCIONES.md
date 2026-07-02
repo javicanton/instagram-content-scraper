@@ -4,7 +4,7 @@ Herramienta open source para investigación por **hashtags en Instagram**: recol
 
 **Configura tus propias listas de hashtags** (`hashtags.csv` o `corpora.yaml`). El repositorio incluye un **caso de estudio de ejemplo** en `examples/` (investigación académica sobre discursos en Instagram).
 
-**Grafos interactivos:** [docs/](docs/) → publicables en GitHub Pages con `python publish_graphs.py`.
+**Grafos interactivos:** [https://javicanton.github.io/instagram-content-scraper/](https://javicanton.github.io/instagram-content-scraper/) — publicables con `python publish_graphs.py`.
 
 ---
 
@@ -801,7 +801,9 @@ Los clusters son **candidatos**, no categorías finales:
 
 ### GitHub Pages (interactivo en el navegador)
 
-Tras el análisis, exporta grafos ligeros para el visor web en `docs/`:
+**Ejemplo publicado:** [https://javicanton.github.io/instagram-content-scraper/](https://javicanton.github.io/instagram-content-scraper/)
+
+Tras el análisis, exporta grafos de hashtags para el visor web en `docs/`:
 
 ```bash
 # Desde examples/analysis/ (incluido en el repo) o tu data/analysis/<corpus>/
@@ -811,8 +813,7 @@ python publish_graphs.py
 python export_graph_web.py \
   --input data/analysis/violencia/graph_hashtags_violencia.graphml \
   --corpus-id violencia \
-  --graph-type hashtags \
-  --max-nodes 200 \
+  --min-degree 30 \
   --output docs/graphs/hashtags_violencia.json
 ```
 
@@ -822,9 +823,7 @@ Publicación:
 2. En GitHub: **Settings → Pages → Build and deployment → GitHub Actions**.
 3. El workflow `.github/workflows/pages.yml` despliega automáticamente.
 
-URL resultante: `https://<usuario>.github.io/<repositorio>/`
-
-El visor usa [vis-network](https://visjs.org/); muestra hasta 200 nodos con mayor conectividad. Para el grafo completo, usa Gephi.
+El visor usa [vis-network](https://visjs.org/). Incluye el grafo completo de hashtags; filtra en el navegador por **grado mínimo** (por defecto: manosfera ≥ 33, violencia ≥ 30) y peso de arista. Los colores representan comunidades detectadas en el GraphML (Louvain).
 
 ### Gephi (análisis avanzado)
 

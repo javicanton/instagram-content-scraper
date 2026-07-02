@@ -9,7 +9,7 @@
 <body>
   <header class="site-header">
     <h1>instagram-content-scraper</h1>
-    <p>Grafos de ejemplo generados con el pipeline de análisis (hashtags, usuarios, red completa).</p>
+    <p>Grafos de co-ocurrencia de hashtags generados con el pipeline de análisis.</p>
     <p class="meta">
       <a href="https://github.com/javicanton/instagram-content-scraper">Repositorio</a>
       · Herramienta open source para investigación por hashtags en Instagram
@@ -24,16 +24,15 @@
     </section>
 
     <section class="legend">
-      <h3>Leyenda de nodos</h3>
+      <h3>Visor</h3>
       <ul>
-        <li><span class="swatch hashtag"></span> Hashtag</li>
-        <li><span class="swatch user"></span> Usuario / comentarista</li>
-        <li><span class="swatch profile"></span> Perfil de post</li>
-        <li><span class="swatch narrative"></span> Cluster narrativo</li>
+        <li><span class="swatch hashtag"></span> Cada color = comunidad detectada en el grafo (Louvain, desde el GraphML)</li>
+        <li>Filtros interactivos: <strong>grado mínimo</strong>, peso de arista, etiquetas y física</li>
+        <li>Valores por defecto: manosfera grado ≥ 33 (~563 nodos), violencia grado ≥ 30 (~252 nodos)</li>
       </ul>
       <p class="note">
-        Los grafos web muestran hasta 200 nodos con mayor conectividad para rendimiento en el navegador.
-        Exporta el <code>.graphml</code> completo con <code>analyze.py</code> y ábrelo en Gephi para el grafo íntegro.
+        El JSON incluye el grafo completo de hashtags; el visor filtra en el navegador.
+        Para análisis avanzado exporta el <code>.graphml</code> con <code>analyze.py</code> y ábrelo en Gephi.
       </p>
     </section>
   </main>
@@ -46,14 +45,17 @@
         const res = await fetch("graphs/manifest.json");
         if (!res.ok) throw new Error(res.statusText);
         const data = await res.json();
-        status.textContent = `${data.graphs.length} grafos de ejemplo`;
-        list.innerHTML = data.graphs.map((g) => `
+        status.textContent = `${data.graphs.length} grafos de hashtags`;
+        list.innerHTML = data.graphs.map((g) => {
+          const defDeg = g.defaults?.min_degree ?? "—";
+          return `
           <a class="graph-card" href="viewer.html?graph=${encodeURIComponent(g.file)}">
             <h3>${g.title}</h3>
-            <p class="graph-meta">${g.graph_type || "grafo"} · corpus <strong>${g.corpus_id || "—"}</strong></p>
-            <p class="graph-stats">${g.node_count} nodos · ${g.edge_count} aristas</p>
+            <p class="graph-meta">corpus <strong>${g.corpus_id || "—"}</strong> · grado ≥ ${defDeg} por defecto</p>
+            <p class="graph-stats">${g.node_count} hashtags · ${g.edge_count} aristas · ${g.community_count} comunidades</p>
           </a>
-        `).join("");
+        `;
+        }).join("");
       } catch (err) {
         status.textContent = "No se pudo cargar graphs/manifest.json. Ejecuta: python publish_graphs.py";
         console.error(err);

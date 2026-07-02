@@ -4,8 +4,7 @@ Herramienta open source en Python para **investigación por hashtags en Instagra
 
 Basada en [instatouch](https://github.com/drawrowfly/instagram-scraper). **CLI + CSV**, sin APIs de pago.
 
-**Grafos interactivos (ejemplo):** tras publicar en GitHub, activa Pages → la URL será  
-`https://<tu-usuario>.github.io/<repo>/`
+**Grafos interactivos (ejemplo):** [https://javicanton.github.io/instagram-content-scraper/](https://javicanton.github.io/instagram-content-scraper/)
 
 **Guía completa:** [INSTRUCCIONES.md](INSTRUCCIONES.md)
 

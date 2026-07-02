@@ -178,6 +178,13 @@ main {
   min-width: 0;
   min-height: 0;
   background: #121218;
+  position: relative;
+  touch-action: none;
+}
+
+/* Botones de navegación vis-network (zoom / pan) */
+#network .vis-navigation {
+  z-index: 5;
 }
 
 .cluster-legend {

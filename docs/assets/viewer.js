@@ -34,6 +34,13 @@
   let defaults = {};
   let filterBounds = { maxDegree: 100, maxWeight: 10 };
 
+  const NODE_FONT = {
+    color: "#e8e8ef",
+    strokeWidth: 0,
+    face: "Segoe UI, system-ui, sans-serif",
+    align: "center",
+  };
+
   const LAYOUT_PHYSICS = {
     forceAtlas2Based: {
       solver: "forceAtlas2Based",
@@ -45,7 +52,7 @@
         damping: 0.45,
         avoidOverlap: 0.6,
       },
-      stabilization: { iterations: 250, updateInterval: 25 },
+      stabilization: { iterations: 250, updateInterval: 25, fit: true },
     },
     barnesHut: {
       solver: "barnesHut",
@@ -57,7 +64,7 @@
         damping: 0.12,
         avoidOverlap: 0.25,
       },
-      stabilization: { iterations: 200, updateInterval: 25 },
+      stabilization: { iterations: 200, updateInterval: 25, fit: true },
     },
     repulsion: {
       solver: "repulsion",
@@ -68,7 +75,7 @@
         nodeDistance: 120,
         damping: 0.2,
       },
-      stabilization: { iterations: 180, updateInterval: 25 },
+      stabilization: { iterations: 180, updateInterval: 25, fit: true },
     },
     hierarchicalRepulsion: {
       solver: "hierarchicalRepulsion",
@@ -80,8 +87,14 @@
         damping: 0.09,
         avoidOverlap: 0.5,
       },
-      stabilization: { iterations: 200, updateInterval: 25 },
+      stabilization: { iterations: 200, updateInterval: 25, fit: true },
     },
+  };
+
+  const SIZE_METRICS = {
+    degree: "Grado",
+    post_count: "Nº posts",
+    uniform: "Uniforme",
   };
 
   function tooltip(label, postCount) {
@@ -122,12 +135,6 @@
     return v;
   }
 
-  const SIZE_METRICS = {
-    degree: "Grado",
-    post_count: "Nº posts",
-    uniform: "Uniforme",
-  };
-
   function metricValue(node, metric) {
     if (metric === "uniform") return 1;
     return Number(node[metric] || 0);
@@ -135,10 +142,7 @@
 
   function sizeScale(nodes, metric) {
     const values = nodes.map((n) => metricValue(n, metric));
-    return {
-      min: Math.min(...values),
-      max: Math.max(...values),
-    };
+    return { min: Math.min(...values), max: Math.max(...values) };
   }
 
   function computeNodeSize(node, metric, scale) {
@@ -149,10 +153,23 @@
     return 8 + norm * 28;
   }
 
+  function labelFont(showLabels) {
+    return { ...NODE_FONT, size: showLabels ? 14 : 0 };
+  }
+
   function savePositions() {
     if (!network) return;
     positionsCache = { ...positionsCache, ...network.getPositions() };
     layoutStabilized = true;
+  }
+
+  function applyCachedPosition(node, nodeId) {
+    const pos = positionsCache[nodeId];
+    if (pos) {
+      node.x = pos.x;
+      node.y = pos.y;
+    }
+    return node;
   }
 
   function buildGraph(minDegree, minWeight, showLabels, sizeMetric) {
@@ -178,34 +195,26 @@
 
     const visibleRaw = visibleIds.map((id) => nodeById.get(id));
     const scale = sizeScale(visibleRaw, sizeMetric);
-    const freezeLayout = layoutStabilized && !physicsToggle.checked;
 
     const visNodes = visibleIds.map((id) => {
       const n = nodeById.get(id);
-      const node = {
-        id: n.id,
-        label: showLabels ? n.label : undefined,
-        group: n.community_id,
-        color: {
-          background: n.color,
-          border: n.color,
-          highlight: { background: n.color, border: "#ffffff" },
+      const node = applyCachedPosition(
+        {
+          id: n.id,
+          label: showLabels ? n.label : "",
+          group: n.community_id,
+          color: {
+            background: n.color,
+            border: n.color,
+            highlight: { background: n.color, border: "#ffffff" },
+          },
+          size: computeNodeSize(n, sizeMetric, scale),
+          title: tooltip(n.label, n.post_count),
+          font: labelFont(showLabels),
+          fixed: false,
         },
-        size: computeNodeSize(n, sizeMetric, scale),
-        title: tooltip(n.label, n.post_count),
-        font: { color: "#e8e8ef", size: showLabels ? 13 : 0 },
-      };
-
-      const pos = positionsCache[n.id];
-      if (pos && (freezeLayout || !physicsToggle.checked)) {
-        node.x = pos.x;
-        node.y = pos.y;
-        node.fixed = { x: true, y: true };
-      } else if (pos && physicsToggle.checked) {
-        node.x = pos.x;
-        node.y = pos.y;
-      }
-
+        n.id
+      );
       return node;
     });
 
@@ -248,16 +257,12 @@
     const lookup = communityLookup();
     const items = [...counts.entries()]
       .map(([cid, count]) => {
-        const meta = lookup.get(cid) || {
-          id: cid,
-          color: nodeById.get([...nodeById.keys()].find((k) => nodeById.get(k).community_id === cid)),
-          label: `Comunidad ${cid}`,
-        };
+        const meta = lookup.get(cid);
         const sample = [...nodeById.values()].find((n) => String(n.community_id) === cid);
         return {
           id: cid,
-          label: meta.label || `Comunidad ${cid}`,
-          color: meta.color || (sample && sample.color) || "#999",
+          label: (meta && meta.label) || `Comunidad ${cid}`,
+          color: (meta && meta.color) || (sample && sample.color) || "#999",
           count,
         };
       })
@@ -282,57 +287,76 @@
 
   function physicsOptions(enabled, solver) {
     const base = LAYOUT_PHYSICS[solver] || LAYOUT_PHYSICS.forceAtlas2Based;
-    return {
-      enabled,
-      ...base,
-    };
+    return { enabled, ...base };
   }
 
   function networkOptions() {
     return {
-      nodes: { shape: "dot", borderWidth: 1, borderWidthSelected: 2 },
+      nodes: {
+        shape: "dot",
+        borderWidth: 1,
+        borderWidthSelected: 2,
+        font: { ...NODE_FONT, size: 14 },
+        scaling: {
+          label: {
+            enabled: true,
+            min: 10,
+            max: 18,
+            drawThreshold: 0,
+            maxVisible: 10000,
+          },
+        },
+      },
       edges: { smooth: { type: "continuous" }, scaling: { min: 1, max: 10 } },
       physics: physicsOptions(physicsToggle.checked, layoutSelect.value),
       interaction: {
         hover: true,
         tooltipDelay: 80,
         navigationButtons: true,
-        keyboard: true,
+        keyboard: { enabled: true, bindToWindow: false },
+        zoomView: true,
+        dragView: true,
+        dragNodes: true,
+        multiselect: false,
       },
     };
   }
 
-  function bindStabilization() {
+  function stopPhysics() {
+    if (!network) return;
+    savePositions();
+    network.stopSimulation();
+    network.setOptions({ physics: { enabled: false } });
+    physicsToggle.checked = false;
+  }
+
+  function bindStabilization(onDone) {
     network.off("stabilizationIterationsDone");
     network.once("stabilizationIterationsDone", () => {
-      savePositions();
-      if (!physicsToggle.checked) {
-        network.setOptions({ physics: { enabled: false } });
-        const updates = nodesDs.get().map((n) => ({
-          id: n.id,
-          fixed: { x: true, y: true },
-        }));
-        nodesDs.update(updates);
-      }
+      stopPhysics();
+      if (onDone) onDone();
     });
   }
 
-  function updateGraphData(visNodes, visEdges, { relayout = false } = {}) {
-    if (!network) {
-      nodesDs = new vis.DataSet(visNodes);
-      edgesDs = new vis.DataSet(visEdges);
-      network = new vis.Network(container, { nodes: nodesDs, edges: edgesDs }, networkOptions());
-      bindStabilization();
-      network.once("stabilizationIterationsDone", () => {
-        network.fit({ animation: true });
-      });
-      return;
-    }
+  function startLayout({ fit = false } = {}) {
+    layoutStabilized = false;
+    nodesDs.update(
+      nodesDs.get().map((n) => ({
+        id: n.id,
+        fixed: false,
+        x: undefined,
+        y: undefined,
+      }))
+    );
+    network.setOptions({ physics: physicsOptions(true, layoutSelect.value) });
+    physicsToggle.checked = true;
+    bindStabilization(() => {
+      if (fit) network.fit({ animation: true });
+    });
+    network.startSimulation();
+  }
 
-    if (network) {
-      savePositions();
-    }
-
+  function syncNodesToDataset(visNodes) {
     const currentIds = new Set(nodesDs.getIds());
     const nextIds = new Set(visNodes.map((n) => n.id));
 
@@ -344,70 +368,71 @@
 
     if (toUpdate.length) nodesDs.update(toUpdate);
     if (toAdd.length) nodesDs.add(toAdd);
+  }
 
+  function updateGraphData(visNodes, visEdges, { relayout = false } = {}) {
+    if (!network) {
+      nodesDs = new vis.DataSet(visNodes);
+      edgesDs = new vis.DataSet(visEdges);
+      network = new vis.Network(container, { nodes: nodesDs, edges: edgesDs }, networkOptions());
+      bindStabilization(() => network.fit({ animation: true }));
+      network.startSimulation();
+      return;
+    }
+
+    if (layoutStabilized) savePositions();
+
+    syncNodesToDataset(visNodes);
     edgesDs.clear();
     edgesDs.add(visEdges);
 
-    const solver = layoutSelect.value;
-    const physicsOn = physicsToggle.checked;
-
-    if (relayout || (physicsOn && !layoutStabilized)) {
-      layoutStabilized = false;
-      nodesDs.update(
-        nodesDs.get().map((n) => ({
-          id: n.id,
-          fixed: false,
-          x: undefined,
-          y: undefined,
-        }))
-      );
-      network.setOptions({ physics: physicsOptions(true, solver) });
-      bindStabilization();
-      network.startSimulation();
-    } else if (physicsOn) {
-      network.setOptions({ physics: physicsOptions(true, solver) });
-      bindStabilization();
-      network.startSimulation();
+    if (relayout || !layoutStabilized) {
+      startLayout();
     } else {
       network.setOptions({ physics: { enabled: false } });
-      nodesDs.update(
-        nodesDs.get().map((n) => {
-          const pos = positionsCache[n.id];
-          const patch = { id: n.id, fixed: { x: true, y: true } };
-          if (pos) {
-            patch.x = pos.x;
-            patch.y = pos.y;
-          }
-          return patch;
-        })
-      );
+      network.stopSimulation();
     }
   }
 
-  function updateSizesOnly() {
+  function patchVisibleNodes(patchFn) {
     if (!nodesDs) return;
-    savePositions();
+    if (layoutStabilized) savePositions();
+    nodesDs.update(
+      nodesDs.get().map((n) => {
+        const base = {
+          id: n.id,
+          fixed: false,
+          x: positionsCache[n.id]?.x,
+          y: positionsCache[n.id]?.y,
+        };
+        return { ...base, ...patchFn(n) };
+      })
+    );
+    network.setOptions({ physics: { enabled: false } });
+    network.stopSimulation();
+  }
+
+  function updateSizesOnly() {
     const metric = sizeSelect.value;
     const visibleRaw = nodesDs
       .get()
       .map((n) => rawData.nodes.find((x) => x.id === n.id))
       .filter(Boolean);
     const scale = sizeScale(visibleRaw, metric);
-    nodesDs.update(
-      nodesDs.get().map((n) => {
-        const raw = rawData.nodes.find((x) => x.id === n.id);
-        return {
-          id: n.id,
-          size: computeNodeSize(raw, metric, scale),
-          fixed: physicsToggle.checked ? false : { x: true, y: true },
-          x: positionsCache[n.id]?.x,
-          y: positionsCache[n.id]?.y,
-        };
-      })
-    );
-    if (!physicsToggle.checked) {
-      network.setOptions({ physics: { enabled: false } });
-    }
+    patchVisibleNodes((n) => {
+      const raw = rawData.nodes.find((x) => x.id === n.id);
+      return { size: computeNodeSize(raw, metric, scale) };
+    });
+  }
+
+  function updateLabelsOnly() {
+    const showLabels = labelsToggle.checked;
+    patchVisibleNodes((n) => ({
+      label: showLabels
+        ? rawData.nodes.find((x) => x.id === n.id)?.label || ""
+        : "",
+      font: labelFont(showLabels),
+    }));
   }
 
   function exportPng() {
@@ -429,31 +454,13 @@
     link.click();
   }
 
-  function updateLabelsOnly(showLabels) {
-    if (!nodesDs) return;
-    savePositions();
-    nodesDs.update(
-      nodesDs.get().map((n) => ({
-        id: n.id,
-        label: showLabels ? rawData.nodes.find((x) => x.id === n.id)?.label : undefined,
-        font: { color: "#e8e8ef", size: showLabels ? 13 : 0 },
-        fixed: physicsToggle.checked ? false : { x: true, y: true },
-        x: positionsCache[n.id]?.x,
-        y: positionsCache[n.id]?.y,
-      }))
-    );
-    if (!physicsToggle.checked) {
-      network.setOptions({ physics: { enabled: false } });
-    }
-  }
-
   function applyFilters({ fit = false, relayout = false, labelsOnly = false, sizesOnly = false } = {}) {
     if (sizesOnly && network) {
       updateSizesOnly();
       return;
     }
     if (labelsOnly && network) {
-      updateLabelsOnly(labelsToggle.checked);
+      updateLabelsOnly();
       return;
     }
 
@@ -474,11 +481,11 @@
       `Grado ≥ ${minDegree} · peso ≥ ${minWeight} · tamaño: ${SIZE_METRICS[sizeMetric] || sizeMetric} · ${layoutSelect.selectedOptions[0].text}`;
     updateLegend(visibleIds);
 
+    const hadNetwork = Boolean(network);
     updateGraphData(visNodes, visEdges, { relayout });
 
-    if (fit && network) {
-      network.once("stabilizationIterationsDone", () => network.fit({ animation: true }));
-      if (!physicsToggle.checked) network.fit({ animation: true });
+    if (fit && hadNetwork && layoutStabilized) {
+      network.fit({ animation: true });
     }
   }
 
@@ -514,74 +521,52 @@
 
     applyFilters({ fit: true, relayout: true });
 
-    function onFilterChange() {
-      applyFilters({ labelsOnly: false, relayout: false });
-    }
-
     degreeSlider.addEventListener("input", () => {
       syncDegree(degreeSlider.value);
-      onFilterChange();
+      applyFilters();
     });
     degreeInput.addEventListener("change", () => {
       syncDegree(degreeInput.value);
-      onFilterChange();
+      applyFilters();
     });
     degreeInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         syncDegree(degreeInput.value);
-        onFilterChange();
+        applyFilters();
       }
     });
 
     weightSlider.addEventListener("input", () => {
       syncWeight(weightSlider.value);
-      onFilterChange();
+      applyFilters();
     });
     weightInput.addEventListener("change", () => {
       syncWeight(weightInput.value);
-      onFilterChange();
+      applyFilters();
     });
     weightInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         syncWeight(weightInput.value);
-        onFilterChange();
+        applyFilters();
       }
     });
 
-    labelsToggle.addEventListener("change", () => {
-      applyFilters({ labelsOnly: true });
-    });
-
-    sizeSelect.addEventListener("change", () => {
-      applyFilters({ sizesOnly: true });
-    });
-
+    labelsToggle.addEventListener("change", () => applyFilters({ labelsOnly: true }));
+    sizeSelect.addEventListener("change", () => applyFilters({ sizesOnly: true }));
     exportPngBtn.addEventListener("click", exportPng);
 
     physicsToggle.addEventListener("change", () => {
-      savePositions();
       if (physicsToggle.checked) {
-        nodesDs.update(nodesDs.get().map((n) => ({ id: n.id, fixed: false })));
-        network.setOptions({ physics: physicsOptions(true, layoutSelect.value) });
-        bindStabilization();
-        network.startSimulation();
+        startLayout();
       } else {
-        savePositions();
-        network.setOptions({ physics: { enabled: false } });
-        nodesDs.update(
-          nodesDs.get().map((n) => ({
-            id: n.id,
-            x: positionsCache[n.id]?.x,
-            y: positionsCache[n.id]?.y,
-            fixed: { x: true, y: true },
-          }))
-        );
+        stopPhysics();
       }
     });
 
     layoutSelect.addEventListener("change", () => {
       layoutStabilized = false;
-      applyFilters({ relayout: true });
+      positionsCache = {};
+      applyFilters({ relayout: true, fit: true });
     });
 
     relayoutBtn.addEventListener("click", () => {
@@ -590,7 +575,8 @@
       applyFilters({ relayout: true, fit: true });
     });
 
-    fitBtn.addEventListener("click", () => network.fit({ animation: true }));
+    fitBtn.addEventListener("click", () => network && network.fit({ animation: true }));
+
     resetBtn.addEventListener("click", () => {
       syncDegree(defaults.min_degree ?? 1);
       syncWeight(defaults.min_edge_weight ?? 1);

@@ -383,8 +383,9 @@
       .map(
         (item) => `
       <li class="legend-item${item.hidden ? " legend-item--hidden" : ""}" data-community-id="${escapeHtml(item.id)}">
-        <span class="legend-swatch" style="background:${item.color}"></span>
+        <span class="legend-swatch" style="--swatch-color:${item.color}"></span>
         <span class="legend-label" title="${escapeHtml(item.label)}">${escapeHtml(item.label)}</span>
+        <button type="button" class="legend-rename-btn" title="Renombrar" aria-label="Renombrar comunidad">✎</button>
         <span class="legend-count" title="${item.shown} visibles de ${item.baseCount}">${item.hidden ? item.baseCount : item.shown}</span>
       </li>`
       )
@@ -394,7 +395,7 @@
     if (items.length === 0) {
       legendHint.textContent = "Ninguna comunidad visible con estos filtros";
     } else if (hiddenCount === 0) {
-      legendHint.textContent = `${items.length} comunidades · clic para ocultar · doble clic para renombrar`;
+      legendHint.textContent = `${items.length} comunidades · clic para ocultar · doble clic o ✎ para renombrar`;
     } else {
       legendHint.textContent = `${items.length} comunidades · ${hiddenCount} oculta(s) · clic para alternar`;
     }
@@ -480,18 +481,44 @@
     });
   }
 
+  const LEGEND_CLICK_DELAY = 280;
+  let legendClickTimer = null;
+
   function bindLegendEvents() {
     legendList.addEventListener("click", (e) => {
+      if (e.target.closest(".legend-rename-input")) return;
+
+      if (e.target.closest(".legend-rename-btn")) {
+        e.preventDefault();
+        e.stopPropagation();
+        clearTimeout(legendClickTimer);
+        legendClickTimer = null;
+        const item = e.target.closest(".legend-item");
+        if (item && item.dataset.editing !== "1") {
+          startCommunityRename(item, item.dataset.communityId);
+        }
+        return;
+      }
+
       const item = e.target.closest(".legend-item");
       if (!item || item.dataset.editing === "1") return;
-      if (e.target.closest(".legend-rename-input")) return;
-      toggleCommunity(item.dataset.communityId);
+
+      const cid = item.dataset.communityId;
+      clearTimeout(legendClickTimer);
+      legendClickTimer = setTimeout(() => {
+        legendClickTimer = null;
+        toggleCommunity(cid);
+      }, LEGEND_CLICK_DELAY);
     });
 
     legendList.addEventListener("dblclick", (e) => {
+      if (e.target.closest(".legend-rename-btn")) return;
       const item = e.target.closest(".legend-item");
-      if (!item) return;
+      if (!item || item.dataset.editing === "1") return;
       e.preventDefault();
+      e.stopPropagation();
+      clearTimeout(legendClickTimer);
+      legendClickTimer = null;
       startCommunityRename(item, item.dataset.communityId);
     });
 

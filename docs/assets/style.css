@@ -217,8 +217,8 @@ main {
 #legend-list li,
 .legend-item {
   display: grid;
-  grid-template-columns: 14px 1fr auto;
-  gap: 0.4rem;
+  grid-template-columns: 14px 1fr auto auto;
+  gap: 0.35rem;
   align-items: center;
   padding: 0.2rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
@@ -234,16 +234,8 @@ main {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.legend-item--hidden {
-  opacity: 0.5;
-}
-
-.legend-item--hidden .legend-swatch {
-  opacity: 0.35;
-}
-
 .legend-item--hidden .legend-label {
-  text-decoration: line-through;
+  color: var(--muted);
 }
 
 .legend-swatch {
@@ -251,12 +243,45 @@ main {
   height: 12px;
   border-radius: 50%;
   display: inline-block;
+  background: var(--swatch-color, #999);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  transition: background 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
+}
+
+.legend-item--hidden .legend-swatch {
+  background: color-mix(in srgb, var(--swatch-color, #999) 18%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--swatch-color, #999) 25%, transparent);
+  filter: grayscale(0.85);
+  opacity: 0.55;
 }
 
 .legend-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.legend-rename-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0.1rem 0.15rem;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.legend-item:hover .legend-rename-btn,
+.legend-rename-btn:focus-visible {
+  opacity: 1;
+}
+
+.legend-rename-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .legend-count {

@@ -19,6 +19,8 @@
   const exportPngBtn = document.getElementById("export-png-btn");
   const legendList = document.getElementById("legend-list");
   const legendHint = document.getElementById("legend-hint");
+  const legendShowAllBtn = document.getElementById("legend-show-all");
+  const legendHideAllBtn = document.getElementById("legend-hide-all");
 
   if (!graphFile) {
     titleEl.textContent = "Falta parámetro ?graph=";
@@ -33,6 +35,9 @@
   let layoutStabilized = false;
   let defaults = {};
   let filterBounds = { maxDegree: 100, maxWeight: 10 };
+  let hiddenCommunities = new Set();
+  let communityCustomNames = {};
+  let lastBaseVisibleIds = [];
 
   const NODE_FONT = {
     color: "#e8e8ef",
@@ -183,7 +188,60 @@
     return node;
   }
 
-  function buildGraph(minDegree, minWeight, showLabels, sizeMetric) {
+  function legendStorageKey() {
+    return `ig-graph-legend:${graphFile}`;
+  }
+
+  function loadLegendPrefs() {
+    try {
+      const raw = localStorage.getItem(legendStorageKey());
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.names && typeof data.names === "object") {
+        communityCustomNames = data.names;
+      }
+      if (Array.isArray(data.hidden)) {
+        hiddenCommunities = new Set(data.hidden.map(String));
+      }
+    } catch (_) {
+      communityCustomNames = {};
+      hiddenCommunities = new Set();
+    }
+  }
+
+  function saveLegendPrefs() {
+    try {
+      localStorage.setItem(
+        legendStorageKey(),
+        JSON.stringify({
+          names: communityCustomNames,
+          hidden: [...hiddenCommunities],
+        })
+      );
+    } catch (_) {
+      /* quota or private mode */
+    }
+  }
+
+  function defaultCommunityLabel(cid) {
+    const meta = communityLookup().get(String(cid));
+    return (meta && meta.label) || `Comunidad ${cid}`;
+  }
+
+  function getCommunityLabel(cid) {
+    const key = String(cid);
+    return communityCustomNames[key] || defaultCommunityLabel(key);
+  }
+
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function computeBaseVisible(minDegree, minWeight) {
     const nodeById = new Map(rawData.nodes.map((n) => [n.id, n]));
     const keptNodes = new Set(
       rawData.nodes.filter((n) => n.degree >= minDegree).map((n) => n.id)
@@ -200,8 +258,35 @@
       connected.add(e.to);
     });
 
-    const visibleIds = [...keptNodes].filter(
+    const baseVisibleIds = [...keptNodes].filter(
       (id) => connected.has(id) || keptNodes.size <= 1
+    );
+
+    return { nodeById, keptEdges, baseVisibleIds };
+  }
+
+  function buildGraph(minDegree, minWeight, showLabels, sizeMetric) {
+    const { nodeById, keptEdges, baseVisibleIds } = computeBaseVisible(minDegree, minWeight);
+    lastBaseVisibleIds = baseVisibleIds;
+
+    const afterCommunityFilter = baseVisibleIds.filter((id) => {
+      const n = nodeById.get(id);
+      return n && !hiddenCommunities.has(String(n.community_id));
+    });
+
+    const visibleSet = new Set(afterCommunityFilter);
+    const filteredEdges = keptEdges.filter(
+      (e) => visibleSet.has(e.from) && visibleSet.has(e.to)
+    );
+
+    const connected = new Set();
+    filteredEdges.forEach((e) => {
+      connected.add(e.from);
+      connected.add(e.to);
+    });
+
+    const visibleIds = afterCommunityFilter.filter(
+      (id) => connected.has(id) || afterCommunityFilter.length <= 1
     );
 
     const visibleRaw = visibleIds.map((id) => nodeById.get(id));
@@ -230,7 +315,7 @@
       return node;
     });
 
-    const visEdges = keptEdges
+    const visEdges = filteredEdges
       .filter((e) => visibleIds.includes(e.from) && visibleIds.includes(e.to))
       .map((e, i) => ({
         id: `e-${e.from}-${e.to}-${i}`,
@@ -245,6 +330,7 @@
       visNodes,
       visEdges,
       visibleIds,
+      baseVisibleIds,
       visibleCount: visNodes.length,
       edgeCount: visEdges.length,
     };
@@ -256,45 +342,161 @@
     return map;
   }
 
-  function updateLegend(visibleIds) {
-    const counts = new Map();
+  function updateLegend(baseVisibleIds, visibleIds) {
+    const baseCounts = new Map();
+    const visibleCounts = new Map();
     const nodeById = new Map(rawData.nodes.map((n) => [n.id, n]));
+
+    baseVisibleIds.forEach((id) => {
+      const n = nodeById.get(id);
+      if (!n) return;
+      const cid = String(n.community_id);
+      baseCounts.set(cid, (baseCounts.get(cid) || 0) + 1);
+    });
+
     visibleIds.forEach((id) => {
       const n = nodeById.get(id);
       if (!n) return;
       const cid = String(n.community_id);
-      counts.set(cid, (counts.get(cid) || 0) + 1);
+      visibleCounts.set(cid, (visibleCounts.get(cid) || 0) + 1);
     });
 
     const lookup = communityLookup();
-    const items = [...counts.entries()]
-      .map(([cid, count]) => {
+    const items = [...baseCounts.entries()]
+      .map(([cid, baseCount]) => {
         const meta = lookup.get(cid);
         const sample = [...nodeById.values()].find((n) => String(n.community_id) === cid);
+        const hidden = hiddenCommunities.has(cid);
+        const shown = visibleCounts.get(cid) || 0;
         return {
           id: cid,
-          label: (meta && meta.label) || `Comunidad ${cid}`,
+          label: getCommunityLabel(cid),
           color: (meta && meta.color) || (sample && sample.color) || "#999",
-          count,
+          baseCount,
+          shown,
+          hidden,
         };
       })
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => b.baseCount - a.baseCount);
 
     legendList.innerHTML = items
       .map(
         (item) => `
-      <li>
+      <li class="legend-item${item.hidden ? " legend-item--hidden" : ""}" data-community-id="${escapeHtml(item.id)}">
         <span class="legend-swatch" style="background:${item.color}"></span>
-        <span class="legend-label">${item.label}</span>
-        <span class="legend-count">${item.count}</span>
+        <span class="legend-label" title="${escapeHtml(item.label)}">${escapeHtml(item.label)}</span>
+        <span class="legend-count" title="${item.shown} visibles de ${item.baseCount}">${item.hidden ? item.baseCount : item.shown}</span>
       </li>`
       )
       .join("");
 
-    legendHint.textContent =
-      items.length === 0
-        ? "Ninguna comunidad visible con estos filtros"
-        : `${items.length} comunidades visibles`;
+    const hiddenCount = items.filter((i) => i.hidden).length;
+    if (items.length === 0) {
+      legendHint.textContent = "Ninguna comunidad visible con estos filtros";
+    } else if (hiddenCount === 0) {
+      legendHint.textContent = `${items.length} comunidades · clic para ocultar · doble clic para renombrar`;
+    } else {
+      legendHint.textContent = `${items.length} comunidades · ${hiddenCount} oculta(s) · clic para alternar`;
+    }
+  }
+
+  function toggleCommunity(cid) {
+    const key = String(cid);
+    if (hiddenCommunities.has(key)) {
+      hiddenCommunities.delete(key);
+    } else {
+      hiddenCommunities.add(key);
+    }
+    saveLegendPrefs();
+    applyFilters({ communitiesOnly: true });
+  }
+
+  function setAllCommunitiesVisible(visible) {
+    const nodeById = new Map(rawData.nodes.map((n) => [n.id, n]));
+    const ids = lastBaseVisibleIds
+      .map((id) => nodeById.get(id))
+      .filter(Boolean)
+      .map((n) => String(n.community_id));
+
+    const unique = [...new Set(ids)];
+    if (visible) {
+      unique.forEach((cid) => hiddenCommunities.delete(cid));
+    } else {
+      unique.forEach((cid) => hiddenCommunities.add(cid));
+    }
+    saveLegendPrefs();
+    applyFilters({ communitiesOnly: true });
+  }
+
+  function startCommunityRename(item, cid) {
+    if (item.dataset.editing === "1") return;
+    item.dataset.editing = "1";
+
+    const labelEl = item.querySelector(".legend-label");
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "legend-rename-input";
+    input.value = getCommunityLabel(cid);
+    input.setAttribute("aria-label", "Nombre de la comunidad");
+    labelEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    const previous = communityCustomNames[String(cid)];
+    let cancelled = false;
+
+    const finish = (save) => {
+      if (item.dataset.editing !== "1") return;
+      if (save) {
+        const value = input.value.trim();
+        if (value && value !== defaultCommunityLabel(cid)) {
+          communityCustomNames[String(cid)] = value;
+        } else {
+          delete communityCustomNames[String(cid)];
+        }
+        saveLegendPrefs();
+      } else if (previous === undefined) {
+        delete communityCustomNames[String(cid)];
+      } else {
+        communityCustomNames[String(cid)] = previous;
+      }
+      item.dataset.editing = "0";
+      applyFilters({ communitiesOnly: true });
+    };
+
+    input.addEventListener("blur", () => {
+      if (!cancelled) finish(true);
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        input.blur();
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        cancelled = true;
+        finish(false);
+      }
+    });
+  }
+
+  function bindLegendEvents() {
+    legendList.addEventListener("click", (e) => {
+      const item = e.target.closest(".legend-item");
+      if (!item || item.dataset.editing === "1") return;
+      if (e.target.closest(".legend-rename-input")) return;
+      toggleCommunity(item.dataset.communityId);
+    });
+
+    legendList.addEventListener("dblclick", (e) => {
+      const item = e.target.closest(".legend-item");
+      if (!item) return;
+      e.preventDefault();
+      startCommunityRename(item, item.dataset.communityId);
+    });
+
+    legendShowAllBtn.addEventListener("click", () => setAllCommunitiesVisible(true));
+    legendHideAllBtn.addEventListener("click", () => setAllCommunitiesVisible(false));
   }
 
   function physicsOptions(enabled, solver) {
@@ -469,7 +671,13 @@
     link.click();
   }
 
-  function applyFilters({ fit = false, relayout = false, labelsOnly = false, sizesOnly = false } = {}) {
+  function applyFilters({
+    fit = false,
+    relayout = false,
+    labelsOnly = false,
+    sizesOnly = false,
+    communitiesOnly = false,
+  } = {}) {
     if (sizesOnly && network) {
       updateSizesOnly();
       return;
@@ -484,20 +692,20 @@
     const showLabels = labelsToggle.checked;
     const sizeMetric = sizeSelect.value;
 
-    const { visNodes, visEdges, visibleIds, visibleCount, edgeCount } = buildGraph(
-      minDegree,
-      minWeight,
-      showLabels,
-      sizeMetric
-    );
+    const { visNodes, visEdges, visibleIds, baseVisibleIds, visibleCount, edgeCount } =
+      buildGraph(minDegree, minWeight, showLabels, sizeMetric);
+
+    const hiddenNote =
+      hiddenCommunities.size > 0 ? ` · ${hiddenCommunities.size} comunidad(es) oculta(s)` : "";
 
     statsEl.textContent = `${visibleCount} nodos · ${edgeCount} aristas · ${rawData.source || ""}`;
     hintEl.textContent =
-      `Grado ≥ ${minDegree} · peso ≥ ${minWeight} · tamaño: ${SIZE_METRICS[sizeMetric] || sizeMetric} · ${layoutSelect.selectedOptions[0].text}`;
-    updateLegend(visibleIds);
+      `Grado ≥ ${minDegree} · peso ≥ ${minWeight} · tamaño: ${SIZE_METRICS[sizeMetric] || sizeMetric} · ${layoutSelect.selectedOptions[0].text}${hiddenNote}`;
+    updateLegend(baseVisibleIds, visibleIds);
 
     const hadNetwork = Boolean(network);
-    updateGraphData(visNodes, visEdges, { relayout });
+    const skipRelayout = communitiesOnly && hadNetwork && layoutStabilized;
+    updateGraphData(visNodes, visEdges, { relayout: relayout && !skipRelayout });
 
     if (fit && hadNetwork && layoutStabilized) {
       network.fit({ animation: true });
@@ -508,6 +716,7 @@
     const res = await fetch(graphFile);
     if (!res.ok) throw new Error(res.statusText);
     rawData = await res.json();
+    loadLegendPrefs();
 
     titleEl.textContent = rawData.title || "Grafo";
 
@@ -534,6 +743,7 @@
     layoutSelect.value = defaults.layout || "forceAtlas2Based";
     sizeSelect.value = defaults.size_metric || "degree";
 
+    bindLegendEvents();
     applyFilters({ fit: true, relayout: true });
 
     degreeSlider.addEventListener("input", () => {
@@ -598,6 +808,8 @@
       labelsToggle.checked = defaults.show_labels !== false;
       layoutSelect.value = defaults.layout || "forceAtlas2Based";
       sizeSelect.value = defaults.size_metric || "degree";
+      hiddenCommunities = new Set();
+      saveLegendPrefs();
       physicsToggle.checked = true;
       layoutStabilized = false;
       positionsCache = {};
